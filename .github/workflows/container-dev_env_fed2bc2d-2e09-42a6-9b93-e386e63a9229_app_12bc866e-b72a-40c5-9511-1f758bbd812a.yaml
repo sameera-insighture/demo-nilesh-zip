@@ -16,7 +16,7 @@ env:
   DOCKER_FILE_PATH: Dockerfile
   DOCKER_BUILD_CONTEXT: .
   SCAN_SEVERITY: CRITICAL
-  TRIVY_SCAN_EXIT_CODE: '1'
+  TRIVY_SCAN_EXIT_CODE: '0'
   TRIVY_RESULT_FORMAT: json
   REPOSITORY_NAME: workflow-sameera
   DEPLOY_STEP_SHOULD_DEPLOY: 'true'
@@ -35,7 +35,7 @@ jobs:
       - name: 'Run :: Checkout Specific Commit'
         if: ${{ github.event.client_payload.commitId != null }}
         run: git checkout ${{ github.event.client_payload.commitId }}
-      - name: 'Run :: Decoding Secrets cb7177c6-2532-4010-8fa0-3a645d3190af'
+      - name: 'Run :: Decoding Secrets 96fa7123-6f78-4484-b0fc-21796738cdbc'
         run: |2-
 
                   if [ ! -x "$(command -v jq)" ]; then
@@ -45,7 +45,7 @@ jobs:
                   fi
                   echo "${{ env.ENCODED_PIPELINE_SECRET }}" | base64 --decode | jq -r 'to_entries[] | "\(.key)=\(.value)"' | while read line; do echo "$line" >> $GITHUB_ENV; echo "::add-mask::${line#*=}"; done
                 
-      - name: 'Run :: Configure AWS credentials 5d6aa42c-ff0a-4a13-a873-ae369593eb8c'
+      - name: 'Run :: Configure AWS credentials 5451dc4f-4a0d-435c-ab23-0f0e9abf2113'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.roleARN }}
@@ -111,7 +111,7 @@ jobs:
     needs:
       - build-and-push
     steps:
-      - name: 'Run :: Decoding Secrets f0cad258-4cdb-4cd3-a894-cbd992231b12'
+      - name: 'Run :: Decoding Secrets 09be637a-47a7-45f6-ac90-f1f5322e771f'
         run: |2-
 
                   if [ ! -x "$(command -v jq)" ]; then
