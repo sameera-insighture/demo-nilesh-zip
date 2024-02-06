@@ -21,7 +21,6 @@ env:
   TRIVY_RESULT_FORMAT: json
   REPOSITORY_NAME: workflow-sameera
   DEPLOY_STEP_SHOULD_DEPLOY: 'true'
-  env 1: val 1
 jobs:
   build-and-push:
     name: Build And Push
@@ -39,7 +38,7 @@ jobs:
       - name: 'Run :: Checkout Specific Commit'
         if: ${{ github.event.client_payload.commitId != null }}
         run: git checkout ${{ github.event.client_payload.commitId }}
-      - name: 'Run :: Decoding Secrets e5d2b3d8-05b6-4783-ab6a-baf1175b7b93'
+      - name: 'Run :: Decoding Secrets a46f818c-a061-46ff-b2d7-66d4da194f0e'
         run: |2-
 
                   if [ ! -x "$(command -v jq)" ]; then
@@ -49,7 +48,7 @@ jobs:
                   fi
                   echo "${{ env.ENCODED_PIPELINE_SECRET }}" | base64 --decode | jq -r 'to_entries[] | "\(.key)=\(.value)"' | while read line; do echo "$line" >> $GITHUB_ENV; echo "::add-mask::${line#*=}"; done
                 
-      - name: 'Run :: Configure AWS credentials 1955f5e3-6e19-4702-9577-1ae6a79111c6'
+      - name: 'Run :: Configure AWS credentials 413df4b8-db06-40da-8726-ce418f1f4331'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.roleARN }}
@@ -150,7 +149,7 @@ jobs:
     needs:
       - build-and-push
     steps:
-      - name: 'Run :: Decoding Secrets e4851b6b-10bb-44b0-adca-3b9c81b6aff1'
+      - name: 'Run :: Decoding Secrets 2fdd632a-5173-4e6d-b07f-a48aa2fedb9d'
         run: |2-
 
                   if [ ! -x "$(command -v jq)" ]; then
@@ -178,5 +177,3 @@ jobs:
                 exit 1
               fi
             
-      - name: Temp Custom Step 1
-        run: run
