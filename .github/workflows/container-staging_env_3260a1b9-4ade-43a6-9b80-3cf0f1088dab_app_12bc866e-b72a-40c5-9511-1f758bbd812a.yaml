@@ -28,15 +28,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Start
-        run: >-
-          echo " Starting GitHub Action!" && echo "IMAGE_EXISTS_IN_ECR=false" >>
-          $GITHUB_ENV
+        run: |2-
+
+              echo " Starting GitHub Action!" && 
+              echo "STEPS_CAN_PROCEED=true" >> $GITHUB_ENV
+              
       - name: 'Run :: Checkout repository'
         uses: actions/checkout@v2
       - name: 'Run :: Checkout Specific Commit'
         if: ${{ github.event.client_payload.commitId != null }}
         run: git checkout ${{ github.event.client_payload.commitId }}
-      - name: 'Run :: Decoding Secrets e02d8e50-3bed-45de-abc6-f269d37b1610'
+      - name: 'Run :: Decoding Secrets 102f9842-0c5c-45a2-a112-c014f3c641a5'
         run: |2-
 
                   if [ ! -x "$(command -v jq)" ]; then
@@ -46,7 +48,7 @@ jobs:
                   fi
                   echo "${{ env.ENCODED_PIPELINE_SECRET }}" | base64 --decode | jq -r 'to_entries[] | "\(.key)=\(.value)"' | while read line; do echo "$line" >> $GITHUB_ENV; echo "::add-mask::${line#*=}"; done
                 
-      - name: 'Run :: Configure AWS credentials 8632abd1-dd2b-43d1-bcb7-f6b18f9b1ce1'
+      - name: 'Run :: Configure AWS credentials 0459bc1f-6ce7-42d9-9c14-5b60c384417b'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.roleARN }}
@@ -62,17 +64,17 @@ jobs:
               if docker pull ${{ env.IMAGE_NAME }}:${{env.IMAGE_TAG}} >/dev/null 2>&1; 
               then
                 echo "Image exists in registry."
-                echo "IMAGE_EXISTS_IN_ECR=true" >> $GITHUB_ENV
+                echo "STEPS_CAN_PROCEED=false" >> $GITHUB_ENV
               else
                 echo "Image does not exist in registry."
-                echo "IMAGE_EXISTS_IN_ECR=false" >> $GITHUB_ENV
+                echo "STEPS_CAN_PROCEED=true" >> $GITHUB_ENV
               fi
               
       - name: 'Run :: Build With Docker'
         run: >-
           docker build -t ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} -f
           ${{env.DOCKER_FILE_PATH}} ${{env.DOCKER_BUILD_CONTEXT}}
-        if: ${{ env.IMAGE_EXISTS_IN_ECR == 'false' }}
+        if: ${{ env.STEPS_CAN_PROCEED == 'true' }}
       - name: 'Run :: Trivy vulnerability scanner'
         uses: aquasecurity/trivy-action@master
         with:
@@ -80,15 +82,50 @@ jobs:
           format: ${{env.TRIVY_RESULT_FORMAT}}
           output: ${{ env.IMAGE_TAG }}-trivy-result.json
           exit-code: ${{env.TRIVY_SCAN_EXIT_CODE}}
-          ignore-unfixed: true
           vuln-type: os,library
           severity: ${{env.SCAN_SEVERITY}}
           hide-progress: true
-        if: ${{ env.IMAGE_EXISTS_IN_ECR == 'false' }}
+        if: ${{ env.STEPS_CAN_PROCEED == 'true' }}
+      - name: 'Run :: Evaluate Trivy Results'
+        run: |2-
+
+              # Minifying Json
+              jq -c '.' ${{ env.IMAGE_TAG }}-trivy-result.json > ${{ env.IMAGE_TAG }}-trivy-result.min.json
+              trivy_result=$(cat "${{ env.IMAGE_TAG }}-trivy-result.min.json")
+              echo "trivy_result: $trivy_result"
+
+              # Set the desired severity level
+              desiredSeverity="${{ env.SCAN_SEVERITY }}"
+              IFS=',' read -ra severities <<< "$desiredSeverity"  # Split the severity string
+
+              # Print the tags array for debugging
+              jq '.runs[0].tool.driver.rules[].properties.tags' "${{ env.IMAGE_TAG }}-trivy-result.json"
+
+              VULNERABILITY_COUNT=0
+
+              for severity in "${severities[@]}"; do
+                count=$(jq --arg severity "$severity" '.runs[0].tool.driver.rules | map(select(.properties.tags and (.properties.tags | map(tostring) | index($severity) // empty))) | length' "${{ env.IMAGE_TAG }}-trivy-result.json")
+                echo "Number of $severity vulnerabilities: $count"
+                VULNERABILITY_COUNT=$((VULNERABILITY_COUNT + count))
+              done
+
+              echo "Total Number of vulnerabilities: $VULNERABILITY_COUNT"
+
+              if [ "$VULNERABILITY_COUNT" -gt 0 ]; then
+                echo "STEPS_CAN_PROCEED=false" >> $GITHUB_ENV
+              fi
+              echo "ARE_TRIVY_RESULTS_EVALUATED=true" >> $GITHUB_ENV
+              
+        if: ${{ env.STEPS_CAN_PROCEED == 'true' }}
       - name: 'Run :: Upload Trivy Result To S3'
         run: |2-
 
-              response=$(curl -X POST ${{ env.S3_UPLOAD_ENDPOINT }} -H "Authorization: ${{ env.SERVICE_ACC_ACCESS_TOKEN }}" -H "x-auth-by: sa" -H "x-organization-id: ${{ env.DEPLOYMENT_ORGANIZATION_ID }}" -H "x-project-id: ${{ env.DEPLOYMENT_PROJECT_ID }}" -H "x-environment-id: ${{ env.DEPLOYMENT_ENVIRONMENT_ID }}" -H "x-resource-id: ${{ env.DEPLOYMENT_APPLICATION_ID }}" -H "Content-Type: multipart/form-data" -F "file=@${{ env.IMAGE_TAG }}-trivy-result.json" -F "provider=aws" -F "resourceType=trivy-report" -F "cloudStoragePath=/${{ env.DEPLOYMENT_APPLICATION_ID }}/trivy_results/")
+
+              # Minifying Json
+              jq -c '.' ${{ env.IMAGE_TAG }}-trivy-result.json > ${{ env.IMAGE_TAG }}-trivy-result.min.json
+
+              # Uploading Minified Trivy Resuls
+              response=$(curl -X POST ${{ env.S3_UPLOAD_ENDPOINT }} -H "Authorization: ${{ env.SERVICE_ACC_ACCESS_TOKEN }}" -H "x-auth-by: sa" -H "x-organization-id: ${{ env.DEPLOYMENT_ORGANIZATION_ID }}" -H "x-project-id: ${{ env.DEPLOYMENT_PROJECT_ID }}" -H "x-environment-id: ${{ env.DEPLOYMENT_ENVIRONMENT_ID }}" -H "x-resource-id: ${{ env.DEPLOYMENT_APPLICATION_ID }}" -H "Content-Type: multipart/form-data" -F "file=@${{ env.IMAGE_TAG }}-trivy-result.min.json" -F "provider=aws" -F "resourceType=trivy-report" -F "cloudStoragePath=/${{ env.DEPLOYMENT_APPLICATION_ID }}/trivy_results/")
 
               if echo "$response" | grep -q '"success":true'; then
                 echo "SUCCESS :: $response"
@@ -96,15 +133,15 @@ jobs:
                 echo "FAILED :: $response"
               fi
               
-        if: ${{ env.IMAGE_EXISTS_IN_ECR == 'false' }}
+        if: ${{ env.ARE_TRIVY_RESULTS_EVALUATED == 'true' }}
       - name: 'Run :: Create Repository'
         run: >-
           aws ecr create-repository --repository-name ${{ env.REPOSITORY_NAME }}
           || true
-        if: ${{ env.IMAGE_EXISTS_IN_ECR == 'false' }}
+        if: ${{ env.STEPS_CAN_PROCEED == 'true' }}
       - name: 'Run :: Build, tag, and push image'
         run: docker push ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-        if: ${{ env.IMAGE_EXISTS_IN_ECR == 'false' }}
+        if: ${{ env.STEPS_CAN_PROCEED == 'true' }}
   deploy:
     name: Deploy
     permissions: write-all
@@ -112,7 +149,7 @@ jobs:
     needs:
       - build-and-push
     steps:
-      - name: 'Run :: Decoding Secrets dc4cd2e6-13e8-43d2-853e-60ac7ff10492'
+      - name: 'Run :: Decoding Secrets 3e5a9d11-d86e-4ff7-b327-0f2ad5a67476'
         run: |2-
 
                   if [ ! -x "$(command -v jq)" ]; then
