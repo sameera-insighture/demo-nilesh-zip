@@ -40,7 +40,7 @@ jobs:
       - name: 'Run :: Checkout Specific Commit'
         if: ${{ github.event.client_payload.commitId != null }}
         run: git checkout ${{ github.event.client_payload.commitId }}
-      - name: 'Run :: Decoding Secrets 017441db-9dd4-463b-8727-845ef38b7c3d'
+      - name: 'Run :: Decoding Secrets 6066b432-1ebb-407c-9830-b3b5cc0b6ade'
         run: |2-
 
                   if [ ! -x "$(command -v jq)" ]; then
@@ -50,7 +50,7 @@ jobs:
                   fi
                   echo "${{ env.ENCODED_PIPELINE_SECRET }}" | base64 --decode | jq -r 'to_entries[] | "\(.key)=\(.value)"' | while read line; do echo "$line" >> $GITHUB_ENV; echo "::add-mask::${line#*=}"; done
                 
-      - name: 'Run :: Configure AWS credentials 30a5b748-4070-4013-933f-1dbfbde51cda'
+      - name: 'Run :: Configure AWS credentials 32c2e770-7aa1-473c-84cd-f7ffbfb67797'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.roleARN }}
@@ -151,7 +151,7 @@ jobs:
     needs:
       - build-and-push
     steps:
-      - name: 'Run :: Decoding Secrets 12784133-71db-41aa-b8c4-24228616f37f'
+      - name: 'Run :: Decoding Secrets b259f578-7762-4ff1-9d3f-5309782b7880'
         run: |2-
 
                   if [ ! -x "$(command -v jq)" ]; then
