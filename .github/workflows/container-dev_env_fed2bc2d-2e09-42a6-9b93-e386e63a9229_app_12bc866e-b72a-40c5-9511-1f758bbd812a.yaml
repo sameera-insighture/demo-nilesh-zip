@@ -16,13 +16,12 @@ env:
   DOCKER_FILE_PATH: Dockerfile
   DOCKER_BUILD_CONTEXT: .
   SCAN_SEVERITY: CRITICAL
-  TRIVY_SCAN_EXIT_CODE: '0'
+  TRIVY_SCAN_EXIT_CODE: '1'
   TRIVY_RESULT_FORMAT: json
+  bnsdfs: sdfsdf
+  dev: devval
   REPOSITORY_NAME: workflow-sameera
   DEPLOY_STEP_SHOULD_DEPLOY: 'true'
-  test1: val1d
-  test2: test3
-  test3: test4
 jobs:
   build-and-push:
     name: Build And Push
@@ -40,7 +39,7 @@ jobs:
       - name: 'Run :: Checkout Specific Commit'
         if: ${{ github.event.client_payload.commitId != null }}
         run: git checkout ${{ github.event.client_payload.commitId }}
-      - name: 'Run :: Decoding Secrets d6b00f38-cc5f-4c52-85f1-eac2238e4c76'
+      - name: 'Run :: Decoding Secrets b41fba6a-7332-4d6a-8091-0f578ba3ae52'
         run: |2-
 
                   if [ ! -x "$(command -v jq)" ]; then
@@ -50,7 +49,7 @@ jobs:
                   fi
                   echo "${{ env.ENCODED_PIPELINE_SECRET }}" | base64 --decode | jq -r 'to_entries[] | "\(.key)=\(.value)"' | while read line; do echo "$line" >> $GITHUB_ENV; echo "::add-mask::${line#*=}"; done
                 
-      - name: 'Run :: Configure AWS credentials bbec93f0-f071-4c8f-a62a-4d59c41b1bd3'
+      - name: 'Run :: Configure AWS credentials 310f5a7a-994b-4f53-82aa-91d5628a31d8'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.roleARN }}
@@ -136,6 +135,8 @@ jobs:
               fi
               
         if: ${{ env.ARE_TRIVY_RESULTS_EVALUATED == 'true' }}
+      - run: sdsdsd
+        name: TempName
       - name: 'Run :: Create Repository'
         run: >-
           aws ecr create-repository --repository-name ${{ env.REPOSITORY_NAME }}
@@ -151,7 +152,7 @@ jobs:
     needs:
       - build-and-push
     steps:
-      - name: 'Run :: Decoding Secrets f296ee01-b915-468c-bcdb-c38320668569'
+      - name: 'Run :: Decoding Secrets eef77e3b-78f5-4f61-9112-c565be85a7b3'
         run: |2-
 
                   if [ ! -x "$(command -v jq)" ]; then
@@ -179,5 +180,3 @@ jobs:
                 exit 1
               fi
             
-      - run: run
-        name: teststep1s
